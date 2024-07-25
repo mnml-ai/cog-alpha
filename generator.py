@@ -57,7 +57,7 @@ class Generator:
                 sd_path, torch_dtype=torch.float16,
                 vae=vae if vae_path else None
             )
-            
+
         # self.pipe.scheduler = LCMScheduler.from_config(self.pipe.scheduler.config)
         # self.pipe.to("cuda")
 
@@ -399,38 +399,40 @@ class Generator:
             seed = int.from_bytes(os.urandom(2), "big")
         print(f"Using seed: {seed}")
 
-        # generator = torch.Generator("cuda").manual_seed(seed)
+        # Move the entire pipeline to CUDA
+        self.pipe.to("cuda")
 
-        if disable_safety_check:
-            pipe.safety_checker = None
+        print(f"Pipeline device: {self.pipe.device}")
+        print(f"VAE device: {self.pipe.vae.device}")
+        print(f"Text encoder device: {self.pipe.text_encoder.device}")
+        print(f"Unet device: {self.pipe.unet.device}")
 
-        outputs= []
+        outputs = []
         for idx in range(num_outputs):
             this_seed = seed + idx
-            generator = torch.Generator("cuda").manual_seed(seed)
+            generator = torch.Generator(device="cuda").manual_seed(this_seed)
             pipe.set_adapters(loras, adapter_weights=lora_weights)
             pipe.fuse_lora()
             if ip_adapter_image:
-                t6= time.time()
+                t6 = time.time()
                 print(f"Time taken until ip -- : {t6 - t5:.2f} seconds")
-                ip_image= Image.open(ip_adapter_image)
+                ip_image = Image.open(ip_adapter_image)
                 prompt_embeds_, negative_prompt_embeds_ = ip.get_prompt_embeds(
                     ip_image,
                     p_embeds=self.compel_proc(prompt),
                     n_embeds=self.compel_proc(negative_prompt),
                     weight=[ip_adapter_weight]
                 )
-                t7= time.time()
+                t7 = time.time()
                 print(f"Time taken to load ip-- : {t7 - t6:.2f} seconds")
                 output = pipe(
-                    prompt_embeds= prompt_embeds_,
-                    negative_prompt_embeds= negative_prompt_embeds_,
+                    prompt_embeds=prompt_embeds_,
+                    negative_prompt_embeds=negative_prompt_embeds_,
                     num_inference_steps=num_inference_steps,
                     guidance_scale=guidance_scale,
                     eta=eta,
                     num_images_per_prompt=1,
                     generator=generator,
-                    # output_type="pil",
                     **kwargs,
                 )
                 t8 = time.time()
@@ -444,14 +446,12 @@ class Generator:
                     eta=eta,
                     num_images_per_prompt=1,
                     generator=generator,
-                    # output_type="pil",
                     **kwargs,
                 )
             pipe.unfuse_lora()
             if output.nsfw_content_detected and output.nsfw_content_detected[0]:
                 continue
             outputs.append(output)
-        t9= time.time()
-        # print(f"Time taken after generating image: {t9 - t8:.2f} seconds", f"/// total time taken: {t9 - t1:.2f}")
+        
         return outputs
 
