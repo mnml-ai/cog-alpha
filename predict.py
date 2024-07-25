@@ -280,8 +280,7 @@ class Predictor(BasePredictor):
         
         if custom_model_url:
             update_config({"download_timeout": download_timeout})
-            model_name = os.path.basename(custom_model_url)
-            local_model_path = download_model(custom_model_url, model_name)
+            local_model_path = download_model(custom_model_url, os.path.basename(custom_model_url))
             self.gen.pipe = StableDiffusionPipeline.from_single_file(
                 local_model_path,
                 torch_dtype=torch.float16,

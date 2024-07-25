@@ -20,15 +20,24 @@ from controlnet_aux import (
 from transformers import pipeline
 
 # utils.py
-import requests
 import os
-from omegaconf import OmegaConf
+import requests
+from urllib.parse import urlparse, unquote
 from config import config
 import time
 
 def download_model(url, save_path):
     os.makedirs(config.model_cache_dir, exist_ok=True)
-    final_path = os.path.join(config.model_cache_dir, os.path.basename(save_path))
+    
+    # Parse the URL to get the actual filename
+    parsed_url = urlparse(url)
+    filename = os.path.basename(unquote(parsed_url.path))
+    
+    # If filename is empty, use the provided save_path as filename
+    if not filename:
+        filename = save_path
+    
+    final_path = os.path.join(config.model_cache_dir, filename)
 
     if os.path.exists(final_path):
         print(f"Model already exists at {final_path}, skipping download.")
@@ -45,7 +54,7 @@ def download_model(url, save_path):
 
             with open(final_path, 'wb') as f:
                 for data in response.iter_content(block_size):
-                    wrote = wrote + len(data)
+                    wrote += len(data)
                     f.write(data)
                     
             if total_size != 0 and wrote != total_size:
