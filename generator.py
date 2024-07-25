@@ -21,8 +21,15 @@ from transformers import AutoProcessor, CLIPSegForImageSegmentation
 from torch import nn
 import numpy as np
 
+from config import config, update_config
+from utils import download_model
+
 class Generator:
-    def __init__(self, sd_path= "runwayml/stable-diffusion-v1-5", vae_path= None, load_ip_adapter=False, load_controlnets={}, use_compel= False, ip_image_encoder= "weights/image_encoder", ip_weight="weights/ip-adapter_sd15.bin" ):
+    def __init__(self, sd_path="runwayml/stable-diffusion-v1-5", vae_path=None, load_ip_adapter=False, load_controlnets={}, use_compel=False, ip_image_encoder="weights/image_encoder", ip_weight="weights/ip-adapter_sd15.bin", custom_model_url=None, download_config=None):
+        if download_config:
+            update_config(download_config)
+        
+        self.custom_model_url = custom_model_url
 
         self.use_compel = use_compel
         self.load_ip_adapter = load_ip_adapter
@@ -37,11 +44,20 @@ class Generator:
         if load_ip_adapter:
             self.image_encoder = CLIPVisionModelWithProjection.from_pretrained(ip_image_encoder, local_files_only=True,).to("cuda", dtype=torch.float16)
 
-        self.pipe = StableDiffusionPipeline.from_pretrained(
-            sd_path, torch_dtype=torch.float16,
-            # local_files_only=True,
-            vae= vae if vae_path else None
-        )
+        if self.custom_model_url:
+            model_name = os.path.basename(self.custom_model_url)
+            local_model_path = download_model(self.custom_model_url, model_name)
+            self.pipe = StableDiffusionPipeline.from_single_file(
+                local_model_path,
+                torch_dtype=torch.float16,
+                vae=vae if vae_path else None
+            )
+        else:
+            self.pipe = StableDiffusionPipeline.from_pretrained(
+                sd_path, torch_dtype=torch.float16,
+                vae=vae if vae_path else None
+            )
+            
         # self.pipe.scheduler = LCMScheduler.from_config(self.pipe.scheduler.config)
         # self.pipe.to("cuda")
 

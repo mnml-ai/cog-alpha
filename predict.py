@@ -119,19 +119,29 @@ MISSING_WEIGHTS = []
 #     MISSING_WEIGHTS.append("sd15")
 
 
+from config import config, update_config
+from utils import download_model
+
 class Predictor(BasePredictor):
     def setup(self):
         """Load the model into memory to make running multiple predictions efficient"""
         self.gen = Generator(
-            sd_path= "SG161222/Realistic_Vision_V6.0_B1_noVAE",
-            vae_path= "stabilityai/sd-vae-ft-mse", use_compel=True,
+            sd_path="SG161222/Realistic_Vision_V6.0_B1_noVAE",
+            vae_path="stabilityai/sd-vae-ft-mse", use_compel=True,
             load_controlnets={"lineart","mlsd", "canny", "depth", "inpainting"},
-            load_ip_adapter=True
+            load_ip_adapter=True,
+            custom_model_url=None  # We'll set this in the predict method
         )
 
     @torch.inference_mode()
     def predict(
         self,
+        custom_model_url: str = Input(
+            description="URL to custom model .safetensor file from civitai.com", default=None
+        ),
+        download_timeout: int = Input(
+            description="Timeout for model download in seconds", default=600
+        ),
         prompt: str = Input(description="Prompt - using compel, use +++ to increase words weight:: doc: https://github.com/damian0815/compel/tree/main/doc || https://invoke-ai.github.io/InvokeAI/features/PROMPTS/#attention-weighting",),
         negative_prompt: str = Input(
             description="Negative prompt - using compel, use +++ to increase words weight//// negative-embeddings available ///// FastNegativeV2 , boring_e621_v4 , verybadimagenegative_v1 || to use them, write their keyword in negative prompt",
@@ -267,6 +277,17 @@ class Predictor(BasePredictor):
         ),
 
     ) -> List[Path]:
+        
+        if custom_model_url:
+            update_config({"download_timeout": download_timeout})
+            model_name = os.path.basename(custom_model_url)
+            local_model_path = download_model(custom_model_url, model_name)
+            self.gen.pipe = StableDiffusionPipeline.from_single_file(
+                local_model_path,
+                torch_dtype=torch.float16,
+                vae=self.gen.pipe.vae
+            )
+
         outputs= self.gen.predict(
                 prompt=prompt,
                 lineart_image=lineart_image, lineart_conditioning_scale=lineart_conditioning_scale,

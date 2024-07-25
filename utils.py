@@ -19,6 +19,47 @@ from controlnet_aux import (
 )
 from transformers import pipeline
 
+# utils.py
+import requests
+import os
+from omegaconf import OmegaConf
+from config import config
+import time
+
+def download_model(url, save_path):
+    os.makedirs(config.model_cache_dir, exist_ok=True)
+    final_path = os.path.join(config.model_cache_dir, os.path.basename(save_path))
+
+    if os.path.exists(final_path):
+        print(f"Model already exists at {final_path}, skipping download.")
+        return final_path
+
+    for attempt in range(config.max_retries):
+        try:
+            response = requests.get(url, stream=True, timeout=config.download_timeout)
+            response.raise_for_status()
+            
+            total_size = int(response.headers.get('content-length', 0))
+            block_size = config.chunk_size
+            wrote = 0
+
+            with open(final_path, 'wb') as f:
+                for data in response.iter_content(block_size):
+                    wrote = wrote + len(data)
+                    f.write(data)
+                    
+            if total_size != 0 and wrote != total_size:
+                os.remove(final_path)
+                raise Exception("Downloaded file size does not match expected size")
+            
+            print(f"Download completed: {final_path}")
+            return final_path
+        except Exception as e:
+            print(f"Download attempt {attempt + 1} failed: {str(e)}")
+            time.sleep(2 ** attempt)  # Exponential backoff
+
+    raise Exception(f"Failed to download model after {config.max_retries} attempts")
+
 def resize_image(image, max_width, max_height):
     """
     Resize an image to a specific height while maintaining the aspect ratio and ensuring

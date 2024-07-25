@@ -16,5 +16,8 @@ build:
     - "triton"
     - "compel"
     - "torchsde==0.2.6"
+    - "safetensors"
+    - "requests"
+    - "omegaconf==2.3.0"
 
 predict: "predict.py:Predictor"
