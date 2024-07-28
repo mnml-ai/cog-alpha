@@ -151,6 +151,11 @@ class Generator:
 
     
     def build_pipe(self, inputs, max_width, max_height, guess_mode=False, use_ip_adapter=False, img2img=None, img2img_strength=0.8):
+        
+        print("using ip adapter::", use_ip_adapter)
+        if use_ip_adapter:
+            from Diffusers_IPAdapter.ip_adapter.ip_adapter import IPAdapter
+            
         # Use the pre-loaded controlnets
         control_nets = []
         processed_control_images = []
