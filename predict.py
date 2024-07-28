@@ -138,13 +138,21 @@ class Predictor(BasePredictor):
         self.gen = None
 
     def load_model(self, model_name, vae_name, custom_url=None):
-        if self.gen and self.gen.pipe.config.name == model_name and self.gen.vae_path == self.vaes[vae_name]:
-            return
+        vae_path = self.vaes[vae_name] if vae_name != "default" else None
+
+        # Check if we need to load a new model
+        if self.gen:
+            current_model = self.models[model_name] if model_name != "custom" else custom_url
+            if (self.gen.custom_model_url == current_model and 
+                self.gen.vae_path == vae_path and 
+                (model_name != "custom" or not custom_url)):
+                print(f"Model {model_name} with VAE {vae_name} already loaded.")
+                return
+
+        print(f"Loading model: {model_name}, VAE: {vae_name}")
 
         if model_name == "custom" and custom_url:
             self.models["custom"] = download_model(custom_url, os.path.basename(custom_url))
-
-        vae_path = self.vaes[vae_name] if vae_name != "default" else None
 
         self.gen = Generator(
             sd_path=self.models[model_name],
@@ -154,6 +162,8 @@ class Predictor(BasePredictor):
             load_ip_adapter=True,
             custom_model_url=self.models[model_name] if model_name == "custom" else None
         )
+
+        print(f"Model {model_name} loaded successfully with VAE {vae_name}")
 
     @torch.inference_mode()
     def predict(

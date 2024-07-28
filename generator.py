@@ -30,6 +30,7 @@ class Generator:
             update_config(download_config)
         
         self.custom_model_url = custom_model_url
+        self.vae_path = vae_path
 
         self.use_compel = use_compel
         self.load_ip_adapter = load_ip_adapter
