@@ -153,6 +153,22 @@ class Predictor(BasePredictor):
             description="Name of the tool",
             default=""
         ),
+        high_res_fix: bool = Input(
+        description="Enable high-resolution fix",
+        default=False
+        ),
+        high_res_scale_factor: float = Input(
+            description="Scale factor for high-resolution fix (e.g., 1.5 for 50% larger)",
+            default=1.5,
+            ge=1.0,
+            le=4.0,
+        ),
+        high_res_steps: int = Input(
+            description="Number of denoising steps for high-resolution fix",
+            default=20,
+            ge=1,
+            le=100,
+        ),
         prompt: str = Input(description="Prompt - using compel, use +++ to increase words weight",),
         negative_prompt: str = Input(
             description="Negative prompt - FastNegativeV2 , boring_e621_v4 , verybadimagenegative_v1",
@@ -354,6 +370,10 @@ class Predictor(BasePredictor):
         
 
         outputs= self.gen.predict(
+                high_res_fix=high_res_fix,
+                high_res_scale_factor=high_res_scale_factor,
+                high_res_steps=high_res_steps,
+    
                 prompt=prompt,
                 lineart_image=lineart_image, lineart_conditioning_scale=lineart_conditioning_scale,
                 depth_conditioning_scale= depth_conditioning_scale, depth_image= depth_image,
