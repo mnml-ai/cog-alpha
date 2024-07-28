@@ -91,7 +91,7 @@ def sort_dict_by_string(input_string, your_dict):
 
 
 AUX_IDS = {
-    "depth": "lllyasviel/control_v11f1p_sd15_depth",
+    "depth": "lllyasviel/sd-controlnet-depth",
     "scribble": "fusing/stable-diffusion-v1-5-controlnet-scribble",
     'lineart': "ControlNet-1-1-preview/control_v11p_sd15_lineart",
     'tile': "lllyasviel/control_v11f1e_sd15_tile",
