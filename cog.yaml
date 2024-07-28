@@ -19,6 +19,6 @@ build:
     - "safetensors"
     - "requests"
     - "omegaconf==2.3.0"
-     - "tqdm"
+    - "tqdm"
 
 predict: "predict.py:Predictor"
