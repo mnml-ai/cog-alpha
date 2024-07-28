@@ -108,7 +108,8 @@ class Generator:
 
         # Create latents from the upscaled image
         init_image = self.pipe.image_processor.preprocess(upscaled_image)
-        init_latent = self.pipe.vae.encode(init_image.to(self.pipe.device)).latent_dist.sample()
+        init_image = init_image.to(self.pipe.device).to(self.pipe.dtype)  # Ensure correct device and dtype
+        init_latent = self.pipe.vae.encode(init_image).latent_dist.sample()
         init_latent = 0.18215 * init_latent
 
         # Generate the high-res image
@@ -494,9 +495,5 @@ class Generator:
                 guidance_scale,
                 this_seed
             )
-            outputs.append({"images": [high_res_image]})
-        else:
-            outputs.append(output)
-            
-        return outputs
+        outputs[-1] = {"images": [high_res_image]}  # Replace the last output with high-res version
 
