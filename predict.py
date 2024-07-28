@@ -299,20 +299,20 @@ class Predictor(BasePredictor):
             if not hasattr(pipe, 'config'):
                 return False
             if isinstance(pipe.config, dict):
-                return pipe.config.get('_name_or_path') == "SG161222/Realistic_Vision_V5.1_noVAE"
+                return pipe.config.get('_name_or_path') == "SG161222/Realistic_Vision_V6.0_B1_noVAE"
             # For FrozenDict or other types
-            return getattr(pipe.config, '_name_or_path', None) == "SG161222/Realistic_Vision_V5.1_noVAE"
+            return getattr(pipe.config, '_name_or_path', None) == "SG161222/Realistic_Vision_V6.0_B1_noVAE"
 
         if model_choice == "built-in":
             if not is_built_in_model(self.gen.pipe):
-                print("Loading built-in model: SG161222/Realistic_Vision_V5.1_noVAE")
+                print("Loading built-in model: SG161222/Realistic_Vision_V6.0_B1_noVAE")
                 self.gen.pipe = StableDiffusionPipeline.from_pretrained(
-                    "SG161222/Realistic_Vision_V5.1_noVAE",
+                    "SG161222/Realistic_Vision_V6.0_B1_noVAE",
                     torch_dtype=torch.float16,
                     vae=self.gen.pipe.vae
                 )
             else:
-                print("Using already loaded built-in model: SG161222/Realistic_Vision_V5.1_noVAE")
+                print("Using already loaded built-in model: SG161222/Realistic_Vision_V6.0_B1_noVAE")
 
         elif model_choice == "cached":
             if self.cached_model_path and os.path.exists(self.cached_model_path):
@@ -325,7 +325,7 @@ class Predictor(BasePredictor):
             else:
                 print("No cached model available. Using built-in model.")
                 self.gen.pipe = StableDiffusionPipeline.from_pretrained(
-                    "SG161222/Realistic_Vision_V5.1_noVAE",
+                    "SG161222/Realistic_Vision_V6.0_B1_noVAE",
                     torch_dtype=torch.float16,
                     vae=self.gen.pipe.vae
                 )
@@ -346,7 +346,7 @@ class Predictor(BasePredictor):
         else:
             print("Invalid model choice or missing custom URL. Using built-in model.")
             self.gen.pipe = StableDiffusionPipeline.from_pretrained(
-                "SG161222/Realistic_Vision_V5.1_noVAE",
+                "SG161222/Realistic_Vision_V6.0_B1_noVAE",
                 torch_dtype=torch.float16,
                 vae=self.gen.pipe.vae
             )           
