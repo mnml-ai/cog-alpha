@@ -7,6 +7,7 @@ from PIL import Image
 import cv2
 import time
 import sys
+from tqdm import tqdm
 
 from transformers import pipeline, AutoImageProcessor, UperNetForSemanticSegmentation
 from cog import BasePredictor, Input, Path
@@ -90,15 +91,13 @@ def sort_dict_by_string(input_string, your_dict):
 
 
 AUX_IDS = {
-    "depth": "fusing/stable-diffusion-v1-5-controlnet-depth",
+    "depth": "lllyasviel/control_v11f1p_sd15_depth",
     "scribble": "fusing/stable-diffusion-v1-5-controlnet-scribble",
     'lineart': "ControlNet-1-1-preview/control_v11p_sd15_lineart",
     'tile': "lllyasviel/control_v11f1e_sd15_tile",
     'brightness': "ioclab/control_v1p_sd15_brightness",
     "inpainting": "lllyasviel/control_v11p_sd15_inpaint",
 }
-
-
 
 
 SD15_WEIGHTS = "weights"
@@ -124,75 +123,38 @@ from utils import download_model
 
 class Predictor(BasePredictor):
     def setup(self):
-        self.models = {
-            "sd15": "runwayml/stable-diffusion-v1-5",
-            "rv51": "SG161222/Realistic_Vision_V5.1_noVAE",
-            "rv60": "SG161222/Realistic_Vision_V6.0_B1_noVAE",
-            "custom": None
-        }
-        self.vaes = {
-            "default": None,
-            "mse": "stabilityai/sd-vae-ft-mse",
-            "ema": "stabilityai/sd-vae-ft-ema"
-        }
-        self.gen = None
-
-    def load_model(self, model_name, vae_name, custom_url=None):
-        vae_path = self.vaes[vae_name] if vae_name != "default" else None
-
-        # Check if we need to load a new model
-        if self.gen:
-            current_model = self.models[model_name] if model_name != "custom" else custom_url
-            if (self.gen.custom_model_url == current_model and 
-                self.gen.vae_path == vae_path and 
-                (model_name != "custom" or not custom_url)):
-                print(f"Model {model_name} with VAE {vae_name} already loaded.")
-                return
-
-        print(f"Loading model: {model_name}, VAE: {vae_name}")
-
-        if model_name == "custom" and custom_url:
-            self.models["custom"] = download_model(custom_url, os.path.basename(custom_url))
-
+        """Load the model into memory to make running multiple predictions efficient"""
         self.gen = Generator(
-            sd_path=self.models[model_name],
-            vae_path=vae_path,
-            use_compel=True,
-            load_controlnets={"lineart", "mlsd", "canny", "depth", "inpainting"},
+            sd_path="SG161222/Realistic_Vision_V5.1_noVAE",
+            vae_path="stabilityai/sd-vae-ft-mse", use_compel=True,
+            load_controlnets={"lineart","mlsd", "canny", "depth", "inpainting"},
             load_ip_adapter=True,
-            custom_model_url=self.models[model_name] if model_name == "custom" else None
+            custom_model_url=None  # We'll set this in the predict method
         )
-
-        print(f"Model {model_name} loaded successfully with VAE {vae_name}")
 
     @torch.inference_mode()
     def predict(
         self,
-        model_name: str = Input(
-            description="Select model",
-            choices=["sd15", "rv51", "rv60", "custom"],
-            default="rv60"
+        model_choice: str = Input(
+            description="Choose between built-in model and custom model",
+            choices=["built-in", "custom"],
+            default="built-in"
         ),
         custom_model_url: str = Input(
-            description="URL to custom model .safetensor file from civitai.com",
+            description="URL to custom model .safetensor file from civitai.com", 
             default=None
         ),
-        vae_name: str = Input(
-            description="Select VAE",
-            choices=["default", "mse", "ema"],
-            default="mse"
-        ),
         is_private: bool = Input(
-            description="Private flag for API use",
+            description="Is this a private tool?",
             default=False
         ),
         tool_name: str = Input(
-            description="Tool name for API use",
+            description="Name of the tool",
             default=""
         ),
-        prompt: str = Input(description="Prompt - using compel, use +++ to increase words weight:: doc: https://github.com/damian0815/compel/tree/main/doc || https://invoke-ai.github.io/InvokeAI/features/PROMPTS/#attention-weighting",),
+        prompt: str = Input(description="Prompt - using compel, use +++ to increase words weight",),
         negative_prompt: str = Input(
-            description="Negative prompt - using compel, use +++ to increase words weight//// negative-embeddings available ///// FastNegativeV2 , boring_e621_v4 , verybadimagenegative_v1 || to use them, write their keyword in negative prompt",
+            description="Negative prompt - FastNegativeV2 , boring_e621_v4 , verybadimagenegative_v1",
             default="Longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
         ),
         num_inference_steps: int = Input(description="Steps to run denoising", default=20),
@@ -326,17 +288,20 @@ class Predictor(BasePredictor):
 
     ) -> List[Path]:
         
-        # Set the download timeout directly in the code
-        update_config({"download_timeout": 600})
-        self.load_model(model_name, vae_name, custom_model_url)
+        if model_choice == "custom" and custom_model_url:
+            local_model_path = download_model(custom_model_url, os.path.basename(custom_model_url))
+            self.gen.pipe = StableDiffusionPipeline.from_single_file(
+                local_model_path,
+                torch_dtype=torch.float16,
+                vae=self.gen.pipe.vae
+            )
 
-        # The rest of the function remains the same
-        outputs = self.gen.predict(
-            prompt=prompt,
-            lineart_image=lineart_image, lineart_conditioning_scale=lineart_conditioning_scale,
-            depth_conditioning_scale=depth_conditioning_scale, depth_image=depth_image,
-            mlsd_image=mlsd_image, mlsd_conditioning_scale=mlsd_conditioning_scale,
-            canny_conditioning_scale=canny_conditioning_scale, canny_image= canny_image,
+        outputs= self.gen.predict(
+                prompt=prompt,
+                lineart_image=lineart_image, lineart_conditioning_scale=lineart_conditioning_scale,
+                depth_conditioning_scale= depth_conditioning_scale, depth_image= depth_image,
+                mlsd_image= mlsd_image, mlsd_conditioning_scale=mlsd_conditioning_scale,
+                canny_conditioning_scale= canny_conditioning_scale, canny_image= canny_image,
 
                 inpainting_image=inpainting_image, mask_image=mask_image, inpainting_conditioning_scale=inpainting_conditioning_scale,
                 num_outputs=num_outputs, max_width=max_width, max_height=max_height,

@@ -30,7 +30,6 @@ class Generator:
             update_config(download_config)
         
         self.custom_model_url = custom_model_url
-        self.vae_path = vae_path
 
         self.use_compel = use_compel
         self.load_ip_adapter = load_ip_adapter
@@ -59,26 +58,29 @@ class Generator:
                 vae=vae if vae_path else None
             )
 
-        # Load controlnets once during initialization
-        def load_controlnet(self, name):
-            if name not in self.controlnets:
-                print(f"Loading controlnet for {name}...")
-                model = AUX_IDS[name]
+        # self.pipe.scheduler = LCMScheduler.from_config(self.pipe.scheduler.config)
+        # self.pipe.to("cuda")
+
+        if load_controlnets:
+            for name in load_controlnets:
+                print("loading controlnets...")
+                model= AUX_IDS[name]
                 self.controlnets[name] = ControlNetModel.from_pretrained(
                     model["path"],
                     torch_dtype=torch.float16,
+                    # local_files_only=True,
                 ).to("cuda")
-                print(f"Loading controlnet detector for {name}...")
+                print("loading controlnet detectors..")
                 self.detectors[name] = model['detector']()
 
         if self.use_compel:
             self.compel_proc = Compel(tokenizer=self.pipe.tokenizer, text_encoder=self.pipe.text_encoder)
 
-        # Load CLIP
+        #load clip
         self.clip_seg_processor = AutoProcessor.from_pretrained("CIDAS/clipseg-rd64-refined")
         self.clip_seg_model = CLIPSegForImageSegmentation.from_pretrained("CIDAS/clipseg-rd64-refined")
 
-        # Load LORAs
+        #LOAD LORAS
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="more_details.safetensors", adapter_name="more_details")
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="epi_noiseoffset2.safetensors", adapter_name="epi_noiseoffset2")
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="color_temperature_slider_v1.safetensors", adapter_name="color_temperature_slider_v1")
@@ -88,13 +90,12 @@ class Generator:
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="id_v1.safetensors", adapter_name="id_v1")
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="ex_v1.safetensors", adapter_name="ex_v1")
 
-        # Load textual inversions
+        #load textual inversions
         self.pipe.load_textual_inversion("dsgnrai/negative-embeddings", weight_name="FastNegativeV2.pt", token="FastNegativeV2")
         self.pipe.load_textual_inversion("dsgnrai/negative-embeddings", weight_name="boring_e621_v4.pt", token="boring_e621_v4")
         self.pipe.load_textual_inversion("dsgnrai/negative-embeddings", weight_name="verybadimagenegative_v1.3.pt", token="verybadimagenegative_v1")
 
         self.pipe.to("cuda", torch.float16)
-       
 
     def convert_image(self, image):
         #converts black pixels into transparent and white pixels to black
@@ -149,36 +150,34 @@ class Generator:
         return blended_image
 
 
-    
-    def build_pipe(self, inputs, max_width, max_height, guess_mode=False, use_ip_adapter=False, img2img=None, img2img_strength=0.8):
-        
+    def build_pipe(
+            self, inputs, max_width, max_height, guess_mode=False, use_ip_adapter= False, img2img=None, img2img_strength= 0.8
+        ):
         print("using ip adapter::", use_ip_adapter)
         if use_ip_adapter:
             from Diffusers_IPAdapter.ip_adapter.ip_adapter import IPAdapter
-
-        # Use the pre-loaded controlnets
         control_nets = []
         processed_control_images = []
         conditioning_scales = []
         w, h = max_width, max_height
         inpainting = False
-        mask = None
-        init_image = None
-        got_size = False
-        img2img_image = None
-        for name, [image, conditioning_scale, mask_image, text_for_auto_mask, negative_text_for_auto_mask] in inputs.items():
+        #image and mask for inpainting
+        mask= None
+        init_image= None
+        got_size= False
+        img2img_image= None
+        for name, [image, conditioning_scale, mask_image,  text_for_auto_mask, negative_text_for_auto_mask] in inputs.items():
             if image is None:
                 continue
-            if name not in self.controlnets:
-                self.load_controlnet(name)
+            # print(name)
             if not isinstance(image, Image.Image):
                 image = Image.open(image)
             if not got_size:
-                image = resize_image(image, max_width, max_height)
-                w, h = image.size
-                got_size = True
+                image= resize_image(image, max_width, max_height)
+                w, h= image.size
+                got_size= True
             else:
-                image = image.resize((w,h))
+                image= image.resize((w,h))
 
             if name=="inpainting" and (mask_image or text_for_auto_mask or negative_text_for_auto_mask) :
                 inpainting = True
@@ -202,8 +201,8 @@ class Generator:
                 inpaint_strength= conditioning_scale
                 inpaint_img= img
             else:
-                img = AUX_IDS[name]["preprocessor"](self, image)
-                img = img.resize((w,h))
+                img= AUX_IDS[name]["preprocessor"](self, image)
+                img= img.resize((w,h))
 
             control_nets.append(self.controlnets[name])
             processed_control_images.append(img)
