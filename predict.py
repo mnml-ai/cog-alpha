@@ -125,7 +125,7 @@ class Predictor(BasePredictor):
     def setup(self):
         """Load the model into memory to make running multiple predictions efficient"""
         self.gen = Generator(
-            sd_path="SG161222/Realistic_Vision_V5.1_noVAE",
+            sd_path="SG161222/Realistic_Vision_V6.0_B1_noVAE",
             vae_path="stabilityai/sd-vae-ft-mse", use_compel=True,
             load_controlnets={"lineart","mlsd", "canny", "depth", "inpainting"},
             load_ip_adapter=True,
