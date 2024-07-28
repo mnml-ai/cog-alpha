@@ -26,14 +26,14 @@ from urllib.parse import urlparse, unquote
 from config import config
 import time
 
+from tqdm import tqdm
+
 def download_model(url, save_path):
     os.makedirs(config.model_cache_dir, exist_ok=True)
     
-    # Parse the URL to get the actual filename
     parsed_url = urlparse(url)
     filename = os.path.basename(unquote(parsed_url.path))
     
-    # If filename is empty, use the provided save_path as filename
     if not filename:
         filename = save_path
     
@@ -43,31 +43,31 @@ def download_model(url, save_path):
         print(f"Model already exists at {final_path}, skipping download.")
         return final_path
 
-    for attempt in range(config.max_retries):
-        try:
-            response = requests.get(url, stream=True, timeout=config.download_timeout)
-            response.raise_for_status()
-            
-            total_size = int(response.headers.get('content-length', 0))
-            block_size = config.chunk_size
-            wrote = 0
+    try:
+        response = requests.get(url, stream=True, timeout=config.download_timeout)
+        response.raise_for_status()
+        
+        total_size = int(response.headers.get('content-length', 0))
+        block_size = 1024 * 1024  # 1 MB
 
-            with open(final_path, 'wb') as f:
-                for data in response.iter_content(block_size):
-                    wrote += len(data)
-                    f.write(data)
-                    
-            if total_size != 0 and wrote != total_size:
-                os.remove(final_path)
-                raise Exception("Downloaded file size does not match expected size")
-            
-            print(f"Download completed: {final_path}")
-            return final_path
-        except Exception as e:
-            print(f"Download attempt {attempt + 1} failed: {str(e)}")
-            time.sleep(2 ** attempt)  # Exponential backoff
-
-    raise Exception(f"Failed to download model after {config.max_retries} attempts")
+        with open(final_path, 'wb') as f, tqdm(
+            desc=filename,
+            total=total_size,
+            unit='iB',
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as progress_bar:
+            for data in response.iter_content(block_size):
+                size = f.write(data)
+                progress_bar.update(size)
+        
+        print(f"Download completed: {final_path}")
+        return final_path
+    except Exception as e:
+        print(f"Download failed: {str(e)}")
+        if os.path.exists(final_path):
+            os.remove(final_path)
+        raise
 
 def resize_image(image, max_width, max_height):
     """

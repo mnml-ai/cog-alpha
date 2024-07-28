@@ -124,20 +124,53 @@ from utils import download_model
 
 class Predictor(BasePredictor):
     def setup(self):
-        """Load the model into memory to make running multiple predictions efficient"""
+        self.models = {
+            "sd15": "runwayml/stable-diffusion-v1-5",
+            "rv51": "SG161222/Realistic_Vision_V5.1_noVAE",
+            "rv60": "SG161222/Realistic_Vision_V6.0_B1_noVAE",
+            "custom": None
+        }
+        self.vaes = {
+            "default": None,
+            "mse": "stabilityai/sd-vae-ft-mse",
+            "ema": "stabilityai/sd-vae-ft-ema"
+        }
+        self.gen = None
+
+    def load_model(self, model_name, vae_name, custom_url=None):
+        if self.gen and self.gen.pipe.config.name == model_name and self.gen.vae_path == self.vaes[vae_name]:
+            return
+
+        if model_name == "custom" and custom_url:
+            self.models["custom"] = download_model(custom_url, os.path.basename(custom_url))
+
+        vae_path = self.vaes[vae_name] if vae_name != "default" else None
+
         self.gen = Generator(
-            sd_path="SG161222/Realistic_Vision_V6.0_B1_noVAE",
-            vae_path="stabilityai/sd-vae-ft-mse", use_compel=True,
-            load_controlnets={"lineart","mlsd", "canny", "depth", "inpainting"},
+            sd_path=self.models[model_name],
+            vae_path=vae_path,
+            use_compel=True,
+            load_controlnets={"lineart", "mlsd", "canny", "depth", "inpainting"},
             load_ip_adapter=True,
-            custom_model_url=None  # We'll set this in the predict method
+            custom_model_url=self.models[model_name] if model_name == "custom" else None
         )
 
     @torch.inference_mode()
     def predict(
         self,
+        model_name: str = Input(
+            description="Select model",
+            choices=["sd15", "rv51", "rv60", "custom"],
+            default="rv60"
+        ),
         custom_model_url: str = Input(
-            description="URL to custom model .safetensor file from civitai.com", default=None
+            description="URL to custom model .safetensor file from civitai.com",
+            default=None
+        ),
+        vae_name: str = Input(
+            description="Select VAE",
+            choices=["default", "mse", "ema"],
+            default="mse"
         ),
         download_timeout: int = Input(
             description="Timeout for model download in seconds", default=600
@@ -278,16 +311,10 @@ class Predictor(BasePredictor):
 
     ) -> List[Path]:
         
-        if custom_model_url:
-            update_config({"download_timeout": download_timeout})
-            local_model_path = download_model(custom_model_url, os.path.basename(custom_model_url))
-            self.gen.pipe = StableDiffusionPipeline.from_single_file(
-                local_model_path,
-                torch_dtype=torch.float16,
-                vae=self.gen.pipe.vae
-            )
+        update_config({"download_timeout": download_timeout})
+        self.load_model(model_name, vae_name, custom_model_url)
 
-        outputs= self.gen.predict(
+        outputs = self.gen.predict(
                 prompt=prompt,
                 lineart_image=lineart_image, lineart_conditioning_scale=lineart_conditioning_scale,
                 depth_conditioning_scale= depth_conditioning_scale, depth_image= depth_image,
