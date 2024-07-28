@@ -294,7 +294,15 @@ class Predictor(BasePredictor):
                 local_model_path,
                 torch_dtype=torch.float16,
                 vae=self.gen.pipe.vae
-            )
+        )
+        elif model_choice == "built-in" or (model_choice == "custom" and not custom_model_url):
+            # Reload the built-in model if it's not already loaded
+            if not isinstance(self.gen.pipe, StableDiffusionPipeline) or self.gen.pipe.config.name != "SG161222/Realistic_Vision_V5.1_noVAE":
+                self.gen.pipe = StableDiffusionPipeline.from_pretrained(
+                    "SG161222/Realistic_Vision_V5.1_noVAE",
+                    torch_dtype=torch.float16,
+                    vae=self.gen.pipe.vae
+                )
 
         outputs= self.gen.predict(
                 prompt=prompt,
