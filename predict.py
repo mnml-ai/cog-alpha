@@ -38,6 +38,7 @@ from Diffusers_IPAdapter.ip_adapter.ip_adapter import IPAdapter
 from transformers import CLIPVisionModelWithProjection
 from generator import Generator
 from utils import SCHEDULERS
+from utils import upscale_image
 
 def resize_image(image, max_width, max_height):
     """
@@ -133,6 +134,10 @@ class Predictor(BasePredictor):
         )
         self.cached_model_path = None
 
+        # Download RealESRGAN model
+        realesrgan_url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x2plus.pth"
+        download_model(realesrgan_url, "RealESRGAN_x2plus.pth")
+
     @torch.inference_mode()
     def predict(
         self,
@@ -153,21 +158,15 @@ class Predictor(BasePredictor):
             description="Name of the tool",
             default=""
         ),
-        high_res_fix: bool = Input(
-        description="Enable high-resolution fix",
-        default=False
+        use_realesrgan: bool = Input(
+            description="Use RealESRGAN for upscaling",
+            default=False
         ),
-        high_res_scale_factor: float = Input(
-            description="Scale factor for high-resolution fix (e.g., 1.5 for 50% larger)",
-            default=1.5,
-            ge=1.0,
-            le=4.0,
-        ),
-        high_res_steps: int = Input(
-            description="Number of denoising steps for high-resolution fix",
-            default=20,
-            ge=1,
-            le=100,
+        realesrgan_scale: int = Input(
+            description="Scale factor for RealESRGAN upscaling",
+            default=2,
+            ge=2,
+            le=4
         ),
         prompt: str = Input(description="Prompt - using compel, use +++ to increase words weight",),
         negative_prompt: str = Input(
@@ -370,10 +369,6 @@ class Predictor(BasePredictor):
         
 
         outputs= self.gen.predict(
-                high_res_fix=high_res_fix,
-                high_res_scale_factor=high_res_scale_factor,
-                high_res_steps=high_res_steps,
-    
                 prompt=prompt,
                 lineart_image=lineart_image, lineart_conditioning_scale=lineart_conditioning_scale,
                 depth_conditioning_scale= depth_conditioning_scale, depth_image= depth_image,
@@ -399,21 +394,12 @@ class Predictor(BasePredictor):
             )
 
         output_paths = []
-        for i, output in enumerate(outputs):
-            if isinstance(output, dict) and "high_res_image" in output:
-                image = output["high_res_image"]
-            elif isinstance(output, dict) and "images" in output:
-                image = output["images"][0]
-            else:
-                image = output.images[0]
-            
+        i = 0
+        for output in outputs:
+            image = output.images[0]
+            if use_realesrgan:
+                image = upscale_image(image, scale=realesrgan_scale)
             output_path = f"/tmp/output_{i}.png"
             image.save(output_path)
             output_paths.append(Path(output_path))
-
-        if len(output_paths) == 0:
-            raise Exception(
-                f"NSFW content detected. Try running it again, or try a different prompt."
-            )
-
-        return output_paths
+            i += 1

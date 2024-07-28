@@ -27,6 +27,15 @@ from config import config
 from tqdm import tqdm
 import time
 
+from realesrgan import RealESRGANer
+from basicsr.archs.rrdbnet_arch import RRDBNet
+
+def upscale_image(image, scale=2, model_name='RealESRGAN_x2plus'):
+    model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=scale)
+    upsampler = RealESRGANer(scale=scale, model_path=f'weights/{model_name}.pth', model=model, tile=400, tile_pad=10, pre_pad=0, half=True)
+    upscaled_image, _ = upsampler.enhance(np.array(image), outscale=scale)
+    return Image.fromarray(upscaled_image)
+
 def download_model(url, save_path):
     os.makedirs(config.model_cache_dir, exist_ok=True)
     

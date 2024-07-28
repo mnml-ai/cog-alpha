@@ -19,5 +19,6 @@ build:
     - "requests"
     - "omegaconf==2.3.0"
     - "tqdm"
+    - "realesrgan"
 
 predict: "predict.py:Predictor"

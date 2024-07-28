@@ -97,36 +97,6 @@ class Generator:
 
         self.pipe.to("cuda", torch.float16)
 
-    def apply_high_res_fix(self, image, prompt, negative_prompt, scale_factor, steps, guidance_scale, seed):
-        # Calculate new dimensions
-        width, height = image.size
-        new_width = int(width * scale_factor)
-        new_height = int(height * scale_factor)
-
-        # Upscale the image
-        upscaled_image = image.resize((new_width, new_height), Image.LANCZOS)
-
-        # Create latents from the upscaled image
-        init_image = self.pipe.image_processor.preprocess(upscaled_image)
-        init_image = init_image.to(self.pipe.device).to(self.pipe.dtype)  # Ensure correct device and dtype
-        init_latent = self.pipe.vae.encode(init_image).latent_dist.sample()
-        init_latent = 0.18215 * init_latent
-
-        # Generate the high-res image
-        generator = torch.Generator(device=self.pipe.device).manual_seed(seed)
-        high_res_image = self.pipe(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            image=init_latent,
-            num_inference_steps=steps,
-            guidance_scale=guidance_scale,
-            generator=generator,
-            width=new_width,
-            height=new_height,
-        ).images[0]
-
-        return high_res_image
-
     def convert_image(self, image):
         #converts black pixels into transparent and white pixels to black
         grayscale_image = image.convert("L")
@@ -347,7 +317,6 @@ class Generator:
                 epi_noise_offset_lora_weight=0, color_temprature_slider_lora_weight=0,
                 mp_lora_weight=0, id_lora_weight=0, ex_v1_lora_weight=0,
 
-                high_res_fix=False, high_res_scale_factor=1.5, high_res_steps=20,
                 ):
         
         lora_weights=[]
@@ -480,24 +449,9 @@ class Generator:
                     **kwargs,
                 )
             pipe.unfuse_lora()
-
             if output.nsfw_content_detected and output.nsfw_content_detected[0]:
                 continue
+            outputs.append(output)
         
-            if high_res_fix:
-                # Apply high-res fix
-                high_res_image = self.apply_high_res_fix(
-                    output.images[0],
-                    prompt,
-                    negative_prompt,
-                    high_res_scale_factor,
-                    high_res_steps,
-                    guidance_scale,
-                    this_seed
-                )
-                outputs.append({"images": [output.images[0]], "high_res_image": high_res_image})
-            else:
-                outputs.append(output)
-
         return outputs
 
