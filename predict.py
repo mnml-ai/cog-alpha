@@ -400,11 +400,20 @@ class Predictor(BasePredictor):
 
         output_paths = []
         for i, output in enumerate(outputs):
-            if isinstance(output, dict) and "images" in output:
+            if isinstance(output, dict) and "high_res_image" in output:
+                image = output["high_res_image"]
+            elif isinstance(output, dict) and "images" in output:
                 image = output["images"][0]
             else:
                 image = output.images[0]
-    
-        output_path = f"/tmp/output_{i}.png"
-        image.save(output_path)
-        output_paths.append(Path(output_path))
+            
+            output_path = f"/tmp/output_{i}.png"
+            image.save(output_path)
+            output_paths.append(Path(output_path))
+
+        if len(output_paths) == 0:
+            raise Exception(
+                f"NSFW content detected. Try running it again, or try a different prompt."
+            )
+
+        return output_paths

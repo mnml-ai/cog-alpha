@@ -480,23 +480,24 @@ class Generator:
                     **kwargs,
                 )
             pipe.unfuse_lora()
+
             if output.nsfw_content_detected and output.nsfw_content_detected[0]:
                 continue
-            outputs.append(output)
         
             if high_res_fix:
-                # Apply high-res fix to the last generated image
+                # Apply high-res fix
                 high_res_image = self.apply_high_res_fix(
-                    outputs[-1].images[0],
+                    output.images[0],
                     prompt,
                     negative_prompt,
                     high_res_scale_factor,
                     high_res_steps,
                     guidance_scale,
-                    seed + num_outputs - 1  # Use the last seed
+                    this_seed
                 )
-            # Replace the last output with high-res version
-            outputs[-1] = {"images": [high_res_image]}
+                outputs.append({"images": [output.images[0]], "high_res_image": high_res_image})
+            else:
+                outputs.append(output)
 
         return outputs
 
