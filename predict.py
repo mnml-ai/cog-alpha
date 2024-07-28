@@ -182,8 +182,13 @@ class Predictor(BasePredictor):
             choices=["default", "mse", "ema"],
             default="mse"
         ),
-        download_timeout: int = Input(
-            description="Timeout for model download in seconds", default=600
+        is_private: bool = Input(
+            description="Private flag for API use",
+            default=False
+        ),
+        tool_name: str = Input(
+            description="Tool name for API use",
+            default=""
         ),
         prompt: str = Input(description="Prompt - using compel, use +++ to increase words weight:: doc: https://github.com/damian0815/compel/tree/main/doc || https://invoke-ai.github.io/InvokeAI/features/PROMPTS/#attention-weighting",),
         negative_prompt: str = Input(
@@ -321,15 +326,17 @@ class Predictor(BasePredictor):
 
     ) -> List[Path]:
         
-        update_config({"download_timeout": download_timeout})
+        # Set the download timeout directly in the code
+        update_config({"download_timeout": 600})
         self.load_model(model_name, vae_name, custom_model_url)
 
+        # The rest of the function remains the same
         outputs = self.gen.predict(
-                prompt=prompt,
-                lineart_image=lineart_image, lineart_conditioning_scale=lineart_conditioning_scale,
-                depth_conditioning_scale= depth_conditioning_scale, depth_image= depth_image,
-                mlsd_image= mlsd_image, mlsd_conditioning_scale=mlsd_conditioning_scale,
-                canny_conditioning_scale= canny_conditioning_scale, canny_image= canny_image,
+            prompt=prompt,
+            lineart_image=lineart_image, lineart_conditioning_scale=lineart_conditioning_scale,
+            depth_conditioning_scale=depth_conditioning_scale, depth_image=depth_image,
+            mlsd_image=mlsd_image, mlsd_conditioning_scale=mlsd_conditioning_scale,
+            canny_conditioning_scale=canny_conditioning_scale, canny_image= canny_image,
 
                 inpainting_image=inpainting_image, mask_image=mask_image, inpainting_conditioning_scale=inpainting_conditioning_scale,
                 num_outputs=num_outputs, max_width=max_width, max_height=max_height,
