@@ -292,8 +292,19 @@ class Predictor(BasePredictor):
         if not hasattr(self, 'cached_model_path'):
             self.cached_model_path = None
 
+        
+        def is_built_in_model(pipe):
+            if not isinstance(pipe, StableDiffusionPipeline):
+                return False
+            if not hasattr(pipe, 'config'):
+                return False
+            if isinstance(pipe.config, dict):
+                return pipe.config.get('_name_or_path') == "SG161222/Realistic_Vision_V5.1_noVAE"
+            # For FrozenDict or other types
+            return getattr(pipe.config, '_name_or_path', None) == "SG161222/Realistic_Vision_V5.1_noVAE"
+
         if model_choice == "built-in":
-            if not isinstance(self.gen.pipe, StableDiffusionPipeline) or self.gen.pipe.config['_name_or_path'] != "SG161222/Realistic_Vision_V5.1_noVAE":
+            if not is_built_in_model(self.gen.pipe):
                 print("Loading built-in model: SG161222/Realistic_Vision_V5.1_noVAE")
                 self.gen.pipe = StableDiffusionPipeline.from_pretrained(
                     "SG161222/Realistic_Vision_V5.1_noVAE",
@@ -338,7 +349,9 @@ class Predictor(BasePredictor):
                 "SG161222/Realistic_Vision_V5.1_noVAE",
                 torch_dtype=torch.float16,
                 vae=self.gen.pipe.vae
-            )
+            )           
+
+        
 
         outputs= self.gen.predict(
                 prompt=prompt,
