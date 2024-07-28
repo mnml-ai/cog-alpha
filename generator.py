@@ -60,9 +60,9 @@ class Generator:
             )
 
         # Load controlnets once during initialization
-        if load_controlnets:
-            print("Loading controlnets...")
-            for name in load_controlnets:
+        def load_controlnet(self, name):
+            if name not in self.controlnets:
+                print(f"Loading controlnet for {name}...")
                 model = AUX_IDS[name]
                 self.controlnets[name] = ControlNetModel.from_pretrained(
                     model["path"],
@@ -155,7 +155,7 @@ class Generator:
         print("using ip adapter::", use_ip_adapter)
         if use_ip_adapter:
             from Diffusers_IPAdapter.ip_adapter.ip_adapter import IPAdapter
-            
+
         # Use the pre-loaded controlnets
         control_nets = []
         processed_control_images = []
@@ -169,6 +169,8 @@ class Generator:
         for name, [image, conditioning_scale, mask_image, text_for_auto_mask, negative_text_for_auto_mask] in inputs.items():
             if image is None:
                 continue
+            if name not in self.controlnets:
+                self.load_controlnet(name)
             if not isinstance(image, Image.Image):
                 image = Image.open(image)
             if not got_size:
