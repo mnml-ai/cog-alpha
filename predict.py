@@ -134,9 +134,9 @@ class Predictor(BasePredictor):
         )
         self.cached_model_path = None
 
-        # Download RealESRGAN model
-        realesrgan_url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x2plus.pth"
-        download_model(realesrgan_url, "RealESRGAN_x2plus.pth")
+        # Ensure RealESRGAN model is available
+        if not os.path.exists("weights/realesrgan/RealESRGAN_x2plus.pth"):
+            raise FileNotFoundError("RealESRGAN model not found. Please run download_weights.py before pushing the cog.")
 
     @torch.inference_mode()
     def predict(

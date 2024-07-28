@@ -6,7 +6,8 @@ build:
   python_packages:
     - "diffusers"
     - "peft"
-    - "torch==2.0.0"
+    - "torch==2.0.1"
+    - "torchvision==0.15.2"
     - "opencv-contrib-python-headless==4.6.0.66"
     - "controlnet-aux==0.0.3"
     - "transformers"
@@ -19,6 +20,7 @@ build:
     - "requests"
     - "omegaconf==2.3.0"
     - "tqdm"
-    - "realesrgan"
+    - "realesrgan==0.3.0"
+    - "basicsr==1.4.2"
 
 predict: "predict.py:Predictor"

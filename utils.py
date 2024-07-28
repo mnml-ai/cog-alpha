@@ -27,12 +27,12 @@ from config import config
 from tqdm import tqdm
 import time
 
-from realesrgan import RealESRGANer
-from basicsr.archs.rrdbnet_arch import RRDBNet
+from realesrgan.archs.srvgg_arch import SRVGGNetCompact
+from realesrgan.utils import RealESRGANer
 
 def upscale_image(image, scale=2, model_name='RealESRGAN_x2plus'):
-    model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=scale)
-    upsampler = RealESRGANer(scale=scale, model_path=f'weights/{model_name}.pth', model=model, tile=400, tile_pad=10, pre_pad=0, half=True)
+    model = SRVGGNetCompact(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=16, upscale=2, act_type='prelu')
+    upsampler = RealESRGANer(scale=scale, model_path=f'weights/realesrgan/{model_name}.pth', model=model, tile=400, tile_pad=10, pre_pad=0, half=True)
     upscaled_image, _ = upsampler.enhance(np.array(image), outscale=scale)
     return Image.fromarray(upscaled_image)
 
