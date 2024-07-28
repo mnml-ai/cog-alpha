@@ -398,16 +398,13 @@ class Predictor(BasePredictor):
                 ex_v1_lora_weight=ex_v1_lora_weight,
             )
 
-        output_paths= []
-        i=0
-        for output in outputs:
-            output_path = f"/tmp/output_{i}.png"
-            output.images[0].save(output_path)
-            output_paths.append(Path(output_path))
-
-        if len(output_paths) == 0:
-            raise Exception(
-                f"NSFW content detected. Try running it again, or try a different prompt."
-            )
-
-        return output_paths
+        output_paths = []
+        for i, output in enumerate(outputs):
+            if isinstance(output, dict) and "images" in output:
+                image = output["images"][0]
+            else:
+                image = output.images[0]
+    
+        output_path = f"/tmp/output_{i}.png"
+        image.save(output_path)
+        output_paths.append(Path(output_path))

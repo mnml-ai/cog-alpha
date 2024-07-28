@@ -484,16 +484,19 @@ class Generator:
                 continue
             outputs.append(output)
         
-        if high_res_fix:
-            # Apply high-res fix
-            high_res_image = self.apply_high_res_fix(
-                output.images[0],
-                prompt,
-                negative_prompt,
-                high_res_scale_factor,
-                high_res_steps,
-                guidance_scale,
-                this_seed
-            )
-        outputs[-1] = {"images": [high_res_image]}  # Replace the last output with high-res version
+            if high_res_fix:
+                # Apply high-res fix to the last generated image
+                high_res_image = self.apply_high_res_fix(
+                    outputs[-1].images[0],
+                    prompt,
+                    negative_prompt,
+                    high_res_scale_factor,
+                    high_res_steps,
+                    guidance_scale,
+                    seed + num_outputs - 1  # Use the last seed
+                )
+            # Replace the last output with high-res version
+            outputs[-1] = {"images": [high_res_image]}
+
+        return outputs
 
