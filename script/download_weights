@@ -26,11 +26,3 @@ os.makedirs("weights/image_encoder", exist_ok=True)
 # Download image_encoder model checkpoints
 subprocess.run(["wget", "-O", "weights/image_encoder/pytorch_model.bin", "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/pytorch_model.bin"])
 subprocess.run(["wget", "-O", "weights/image_encoder/config.json", "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/config.json"])
-
-
-# RealESRGAN
-# Create directory for RealESRGAN weights
-os.makedirs("weights/realesrgan", exist_ok=True)
-
-# Download RealESRGAN model
-subprocess.run(["wget", "-P", "weights/realesrgan/", "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"])

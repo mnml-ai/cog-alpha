@@ -38,7 +38,6 @@ from Diffusers_IPAdapter.ip_adapter.ip_adapter import IPAdapter
 from transformers import CLIPVisionModelWithProjection
 from generator import Generator
 from utils import SCHEDULERS
-from utils import upscale_image
 
 def resize_image(image, max_width, max_height):
     """
@@ -126,17 +125,13 @@ class Predictor(BasePredictor):
     def setup(self):
         """Load the model into memory to make running multiple predictions efficient"""
         self.gen = Generator(
-            sd_path="SG161222/Realistic_Vision_V5.1_noVAE",
+            sd_path="SG161222/Realistic_Vision_V6.0_B1_noVAE",
             vae_path="stabilityai/sd-vae-ft-mse", use_compel=True,
             load_controlnets={"lineart","mlsd", "canny", "depth", "inpainting"},
             load_ip_adapter=True,
             custom_model_url=None
         )
         self.cached_model_path = None
-
-        # Ensure RealESRGAN model is available
-        if not os.path.exists("weights/realesrgan/RealESRGAN_x2plus.pth"):
-            raise FileNotFoundError("RealESRGAN model not found. Please run download_weights.py before pushing the cog.")
 
     @torch.inference_mode()
     def predict(
@@ -157,16 +152,6 @@ class Predictor(BasePredictor):
         tool_name: str = Input(
             description="Name of the tool",
             default=""
-        ),
-        use_realesrgan: bool = Input(
-            description="Use RealESRGAN for upscaling",
-            default=False
-        ),
-        realesrgan_scale: int = Input(
-            description="Scale factor for RealESRGAN upscaling",
-            default=2,
-            ge=2,
-            le=4
         ),
         prompt: str = Input(description="Prompt - using compel, use +++ to increase words weight",),
         negative_prompt: str = Input(
@@ -393,13 +378,16 @@ class Predictor(BasePredictor):
                 ex_v1_lora_weight=ex_v1_lora_weight,
             )
 
-        output_paths = []
-        i = 0
+        output_paths= []
+        i=0
         for output in outputs:
-            image = output.images[0]
-            if use_realesrgan:
-                image = upscale_image(image, scale=realesrgan_scale)
             output_path = f"/tmp/output_{i}.png"
-            image.save(output_path)
+            output.images[0].save(output_path)
             output_paths.append(Path(output_path))
-            i += 1
+
+        if len(output_paths) == 0:
+            raise Exception(
+                f"NSFW content detected. Try running it again, or try a different prompt."
+            )
+
+        return output_paths
