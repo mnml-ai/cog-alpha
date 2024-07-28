@@ -125,19 +125,20 @@ class Predictor(BasePredictor):
     def setup(self):
         """Load the model into memory to make running multiple predictions efficient"""
         self.gen = Generator(
-            sd_path="SG161222/Realistic_Vision_V6.0_B1_noVAE",
+            sd_path="SG161222/Realistic_Vision_V5.1_noVAE",
             vae_path="stabilityai/sd-vae-ft-mse", use_compel=True,
             load_controlnets={"lineart","mlsd", "canny", "depth", "inpainting"},
             load_ip_adapter=True,
-            custom_model_url=None  # We'll set this in the predict method
+            custom_model_url=None
         )
+        self.cached_model_path = None
 
     @torch.inference_mode()
     def predict(
         self,
         model_choice: str = Input(
-            description="Choose between built-in model and custom model",
-            choices=["built-in", "custom"],
+            description="Choose between built-in model, cached model, or custom model",
+            choices=["built-in", "cached", "custom"],
             default="built-in"
         ),
         custom_model_url: str = Input(
@@ -287,22 +288,57 @@ class Predictor(BasePredictor):
         ),
 
     ) -> List[Path]:
-        
-        if model_choice == "custom" and custom_model_url:
-            local_model_path = download_model(custom_model_url, os.path.basename(custom_model_url))
-            self.gen.pipe = StableDiffusionPipeline.from_single_file(
-                local_model_path,
-                torch_dtype=torch.float16,
-                vae=self.gen.pipe.vae
-        )
-        elif model_choice == "built-in" or (model_choice == "custom" and not custom_model_url):
-            # Reload the built-in model if it's not already loaded
-            if not isinstance(self.gen.pipe, StableDiffusionPipeline) or self.gen.pipe.config.name != "SG161222/Realistic_Vision_V5.1_noVAE":
+    
+        if not hasattr(self, 'cached_model_path'):
+            self.cached_model_path = None
+
+        if model_choice == "built-in":
+            if not isinstance(self.gen.pipe, StableDiffusionPipeline) or self.gen.pipe.config['_name_or_path'] != "SG161222/Realistic_Vision_V5.1_noVAE":
+                print("Loading built-in model: SG161222/Realistic_Vision_V5.1_noVAE")
                 self.gen.pipe = StableDiffusionPipeline.from_pretrained(
                     "SG161222/Realistic_Vision_V5.1_noVAE",
                     torch_dtype=torch.float16,
                     vae=self.gen.pipe.vae
                 )
+            else:
+                print("Using already loaded built-in model: SG161222/Realistic_Vision_V5.1_noVAE")
+
+        elif model_choice == "cached":
+            if self.cached_model_path and os.path.exists(self.cached_model_path):
+                print(f"Loading cached model from: {self.cached_model_path}")
+                self.gen.pipe = StableDiffusionPipeline.from_single_file(
+                    self.cached_model_path,
+                    torch_dtype=torch.float16,
+                    vae=self.gen.pipe.vae
+                )
+            else:
+                print("No cached model available. Using built-in model.")
+                self.gen.pipe = StableDiffusionPipeline.from_pretrained(
+                    "SG161222/Realistic_Vision_V5.1_noVAE",
+                    torch_dtype=torch.float16,
+                    vae=self.gen.pipe.vae
+                )
+
+        elif model_choice == "custom" and custom_model_url:
+            local_model_path = download_model(custom_model_url, os.path.basename(custom_model_url))
+            if local_model_path != self.cached_model_path:
+                print(f"Loading new custom model from: {local_model_path}")
+                self.gen.pipe = StableDiffusionPipeline.from_single_file(
+                    local_model_path,
+                    torch_dtype=torch.float16,
+                    vae=self.gen.pipe.vae
+                )
+                self.cached_model_path = local_model_path
+            else:
+                print(f"Using already loaded custom model: {local_model_path}")
+        
+        else:
+            print("Invalid model choice or missing custom URL. Using built-in model.")
+            self.gen.pipe = StableDiffusionPipeline.from_pretrained(
+                "SG161222/Realistic_Vision_V5.1_noVAE",
+                torch_dtype=torch.float16,
+                vae=self.gen.pipe.vae
+            )
 
         outputs= self.gen.predict(
                 prompt=prompt,
