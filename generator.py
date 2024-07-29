@@ -81,11 +81,11 @@ class Generator:
         self.clip_seg_model = CLIPSegForImageSegmentation.from_pretrained("CIDAS/clipseg-rd64-refined")
 
         #LOAD LORAS
+        self.pipe.load_lora_weights("dsgnrai/lora", weight_name="add_detail.safetensors", adapter_name="add_detail")
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="more_details.safetensors", adapter_name="more_details")
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="epi_noiseoffset2.safetensors", adapter_name="epi_noiseoffset2")
-        self.pipe.load_lora_weights("dsgnrai/lora", weight_name="color_temperature_slider_v1.safetensors", adapter_name="color_temperature_slider_v1")
-        self.pipe.load_lora_weights("dsgnrai/lora", weight_name="add_detail.safetensors", adapter_name="add_detail")
-        self.pipe.load_lora_weights("dsgnrai/lora", weight_name="FilmVelvia3.safetensors", adapter_name="FilmVelvia3")
+        self.pipe.load_lora_weights("dsgnrai/lora", weight_name="SDXLrender_v2.0.safetensors", adapter_name="SDXLrender_v2")
+        self.pipe.load_lora_weights("dsgnrai/lora", weight_name="add_sharpness.safetensors", adapter_name="add_sharpness")
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="mp_v1.safetensors", adapter_name="mp_v1")
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="id_v1.safetensors", adapter_name="id_v1")
         self.pipe.load_lora_weights("dsgnrai/lora", weight_name="ex_v1.safetensors", adapter_name="ex_v1")
@@ -313,8 +313,8 @@ class Generator:
                 img2img=None, img2img_strength= 0.8, ip_ckpt='"ip-adapter_sd15.bin"',
                 text_for_auto_mask=None, negative_text_for_auto_mask= None,
 
-                add_more_detail_lora_scale= 0, detail_tweaker_lora_weight= 0, film_grain_lora_weight= 0, 
-                epi_noise_offset_lora_weight=0, color_temprature_slider_lora_weight=0,
+                add_more_detail_lora_scale= 0, detail_tweaker_lora_weight= 0,  
+                epi_noise_offset_lora_weight=0, sdxlrender_v2_lora_weight=0, add_sharpness_lora_weight=0,
                 mp_lora_weight=0, id_lora_weight=0, ex_v1_lora_weight=0,
 
                 ):
@@ -327,15 +327,15 @@ class Generator:
         if detail_tweaker_lora_weight!=0:
             lora_weights.append(detail_tweaker_lora_weight)
             loras.append("add_detail")
-        if film_grain_lora_weight!=0:
-            lora_weights.append(film_grain_lora_weight)
-            loras.append("FilmVelvia3")
+        if sdxlrender_v2_lora_weight != 0:
+            lora_weights.append(sdxlrender_v2_lora_weight)
+            loras.append("SDXLrender_v2")
+        if add_sharpness_lora_weight != 0:
+            lora_weights.append(add_sharpness_lora_weight)
+            loras.append("add_sharpness")
         if epi_noise_offset_lora_weight!=0:
             lora_weights.append(epi_noise_offset_lora_weight)
             loras.append("epi_noiseoffset2")
-        if color_temprature_slider_lora_weight!=0:
-            lora_weights.append(color_temprature_slider_lora_weight)
-            loras.append("color_temperature_slider_v1")
         if mp_lora_weight!=0:
             lora_weights.append(mp_lora_weight)
             loras.append("mp_v1")

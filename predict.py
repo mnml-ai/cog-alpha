@@ -268,13 +268,13 @@ class Predictor(BasePredictor):
         detail_tweaker_lora_weight: float = Input(
             description="disabled on 0", default=0,
         ), 
-        film_grain_lora_weight: float = Input(
-            description="disabled on 0", default=0,
-        ), 
-        epi_noise_offset_lora_weight: float = Input(
-            description="disabled on 0", default=0,
+        sdxlrender_v2_lora_weight: float = Input(
+            description="Weight for SDXLrender v2.0 LORA, disabled on 0", default=0,
         ),
-        color_temprature_slider_lora_weight: float = Input(
+        add_sharpness_lora_weight: float = Input(
+            description="Weight for add_sharpness LORA, disabled on 0", default=0,
+        ),
+        epi_noise_offset_lora_weight: float = Input(
             description="disabled on 0", default=0,
         ),
         mp_lora_weight: float = Input(
@@ -372,8 +372,9 @@ class Predictor(BasePredictor):
                 text_for_auto_mask=positive_auto_mask_text.split(",") if positive_auto_mask_text else None,
                 negative_text_for_auto_mask= negative_auto_mask_text.split(",") if negative_auto_mask_text else None,
 
-                add_more_detail_lora_scale= add_more_detail_lora_scale, detail_tweaker_lora_weight= detail_tweaker_lora_weight, film_grain_lora_weight= film_grain_lora_weight, 
-                epi_noise_offset_lora_weight=epi_noise_offset_lora_weight, color_temprature_slider_lora_weight=color_temprature_slider_lora_weight, 
+                add_more_detail_lora_scale= add_more_detail_lora_scale, detail_tweaker_lora_weight= detail_tweaker_lora_weight, 
+                sdxlrender_v2_lora_weight=sdxlrender_v2_lora_weight, epi_noise_offset_lora_weight=epi_noise_offset_lora_weight,  
+                add_sharpness_lora_weight=add_sharpness_lora_weight,
                 mp_lora_weight=mp_lora_weight, id_lora_weight=id_lora_weight,
                 ex_v1_lora_weight=ex_v1_lora_weight,
             )
