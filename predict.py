@@ -248,7 +248,7 @@ class Predictor(BasePredictor):
             description="Comma seperated string of controlnet names, list of names: tile, inpainting, lineart,depth ,scribble , brightness /// example value: tile, inpainting, lineart ", default="tile, inpainting, lineart"
         ),
         ip_adapter_ckpt: str = Input(
-            description="IP Adapter checkpoint", default="ip-adapter_sd15.bin", choices=["ip-adapter_sd15.bin", "ip-adapter-plus_sd15.bin", "ip-adapter-plus-face_sd15.bin"]
+            description="IP Adapter checkpoint", default="ip-adapter_sd15.bin", choices=["ip-adapter_sd15.bin", "ip-adapter-plus_sd15.bin", "ip-adapter_sd15_vit-G.bin"]
         ),
         ip_adapter_image: Path = Input(
             description="IP Adapter image", default=None
